@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<script src="./cmake-build-debug-wasm/wasm_test.js"></script>
+<script type="module">
+    let module = await createModule()
+    // console.log(module.add(1,5))
+    console.log(module.cwrap('add', 'number', ['number', 'number'])(1, 5))
+    const api = {
+        version: module.cwrap('version', 'number', []),
+
+    };
+    console.log(module)
+
+    async function loadImage(src) {
+        // Load image
+        const imgBlob = await fetch(src).then((resp) => resp.blob());
+        const img = await createImageBitmap(imgBlob);
+        // Make canvas same size as image
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        // Draw image onto canvas
+
+        const ctx = canvas.getContext('2d', {willReadFrequently: true});
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, img.width, img.height);
+    }
+
+
+    const input = document.getElementById('fileInput');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    console.log("当前堆内存大小(字节):", module.HEAPU8.buffer.byteLength);
+    console.log("当前堆内存大小(MB):", module.HEAPU8.buffer.byteLength / (1024 * 1024))
+    input.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        img.onload = async function () {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            // 获取图像像素数据（RGBA）
+            const imageData = ctx.getImageData(0, 0, img.width, img.height);
+            const pixelData = imageData.data;
+            const dataSize = pixelData.length;
+
+
+            console.log("需要分配的图片大小(mb)", dataSize / (1024 * 1024))
+
+            const dataPtr = module._malloc(dataSize);
+            if (dataPtr === 0) {
+                alert("WASM 内存申请失败");
+                return;
+            }
+
+
+            try {
+                // 拷贝数据到 wasm 内存
+                module.HEAPU8.set(pixelData, dataPtr);
+                let start = performance.now()
+                api.processData(dataPtr, dataSize, img.width, img.height);
+                let res = performance.now() - start
+                console.log(res, "消耗时间")
+
+                // 从 wasm 内存读取处理后数据
+                const resultData = new Uint8Array(module.HEAPU8.buffer, dataPtr, dataSize);
+
+                // 复制数据到新的 ImageData 里显示
+                const newImageData = ctx.createImageData(img.width, img.height);
+                newImageData.data.set(resultData);
+                ctx.putImageData(newImageData, 0, 0);
+                console.log("图像处理完成");
+
+            } catch (err) {
+                console.error(err);
+                alert("处理出错: " + err.message);
+            } finally {
+                // 释放输入缓冲
+                console.log("释放")
+                module._free(dataPtr);
+            }
+        };
+
+        img.src = URL.createObjectURL(file);
+    });
+
+
+</script>
+<body>
+<h2>选择图片进行灰度处理</h2>
+<input type="file" id="fileInput" accept="image/*"/>
+<br/><br/>
+<canvas id="canvas"></canvas>
+</body>
+</html>
