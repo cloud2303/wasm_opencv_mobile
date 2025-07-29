@@ -1,0 +1,4 @@
+cmake-build-debug-wasm
+cmake-build-release-wasm
+opencv-mobile-4.11.0-webassembly
+.idea
