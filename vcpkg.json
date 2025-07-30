@@ -1,5 +1,6 @@
 {
   "dependencies": [
-    "libwebp"
+    "libwebp",
+    "nu-book-zxing-cpp"
   ]
 }
