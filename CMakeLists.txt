@@ -6,7 +6,9 @@ add_executable(wasm_test main.cpp)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-    target_compile_options(wasm_test PRIVATE -O3)
+    target_compile_options(wasm_test PRIVATE
+            -O3
+    )
     target_link_options(wasm_test PRIVATE
             -O3
             -Wl,--strip-all

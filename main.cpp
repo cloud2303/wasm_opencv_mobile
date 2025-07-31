@@ -12,40 +12,38 @@ using namespace emscripten;
 
 
 thread_local const val Uint8ClampedArray = val::global("Uint8ClampedArray");
-thread_local const val ImageData = val::global("ImageData");
 
 
-val process_Qrcode1(const std::string &data, int width, int height) {
-    std::span span(
-        reinterpret_cast<const uint8_t *>(data.data()), data.size());
+val process_Qrcode(const std::string& encodedData) {
+    std::span inputSpan(
+        reinterpret_cast<const uint8_t*>(encodedData.data()),
+        encodedData.size()
+    );
 
-    const cv::Mat rgba(height, width, CV_8UC4, const_cast<uint8_t *>(span.data()));
-    cv::Mat gray;
-    cv::cvtColor(rgba, gray, cv::COLOR_RGBA2GRAY);
-    auto image = ZXing::ImageView(gray.data, width, height, ZXing::ImageFormat::Lum);
-    auto options = ZXing::ReaderOptions().setFormats(ZXing::BarcodeFormat::QRCode);
-    auto barcodes = ZXing::ReadBarcodes(image, options);
+    const cv::Mat encodedMat(1, static_cast<int>(inputSpan.size()), CV_8UC1, const_cast<uint8_t*>(inputSpan.data()));
+    const cv::Mat colorImg = cv::imdecode(encodedMat, cv::IMREAD_COLOR);
 
-    val entry = val::array();
-    for (const auto &b: barcodes) {
-        entry.call<void>("push", val(ZXing::ToString(b.format())), val(b.text()));
+    cv::Mat grayImg;
+    cv::cvtColor(colorImg, grayImg, cv::COLOR_BGR2GRAY);
+
+    const ZXing::ImageView imageView(
+        grayImg.data, colorImg.cols, colorImg.rows, ZXing::ImageFormat::Lum
+    );
+
+    const auto decodeOptions = ZXing::ReaderOptions().setFormats(ZXing::BarcodeFormat::QRCode);
+    const auto results = ZXing::ReadBarcodes(imageView, decodeOptions);
+
+    const val qrArray = val::array();
+    for (const auto& result : results) {
+        qrArray.call<void>("push", val(result.text()));
     }
 
-    cv::rectangle(gray, cv::Point(10, 10), cv::Point(100, 100), cv::Scalar(255, 0, 0, 255), 3);
-    cv::Mat final_rgba_image;
-    cv::cvtColor(gray, final_rgba_image, cv::COLOR_GRAY2RGBA);
-    const uint8_t *image_pointer = final_rgba_image.data;
-    const size_t total_bytes = final_rgba_image.total() * final_rgba_image.elemSize();
-    val image_data_array = ImageData.new_(Uint8ClampedArray.new_(
-                                              typed_memory_view(total_bytes, image_pointer)
-                                          ), width, height);
-    val result_object = val::object();
-    result_object.set("qr_codes", entry);
-    result_object.set("processed_image", image_data_array);
+    val output = val::object();
+    output.set("qr_codes", qrArray);
 
-    return result_object;
+    return output;
 }
 
 EMSCRIPTEN_BINDINGS(my_module) {
-    function("process_Qrcode", &process_Qrcode1);
+    function("process_Qrcode", &process_Qrcode);
 }

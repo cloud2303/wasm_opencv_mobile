@@ -38,33 +38,61 @@
     input.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        try {
+            // 直接读取文件为 ArrayBuffer
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
 
-        const img = new Image();
-        img.onload = async function () {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
+            console.log("文件大小(MB):", uint8Array.length / (1024 * 1024));
 
-            // 获取图像像素数据（RGBA）
-            const imageData = ctx.getImageData(0, 0, img.width, img.height);
-            const pixelData = imageData.data;
-            const dataSize = pixelData.length;
-            console.log(pixelData)
+            // 直接传递文件缓冲区给 WASM
+            let t1 = performance.now();
+            let res = module.process_Qrcode(uint8Array);
+            let t2 = performance.now() - t1;
 
-            console.log("需要分配的图片大小(mb)1", dataSize / (1024 * 1024))
-            try {
-                // 拷贝数据到 wasm 内存
-                let t1 = performance.now()
-                let res = module.process_Qrcode(pixelData, img.width, img.height);
-                let t2 = performance.now() - t1
-                console.log(res)
-                console.log(t2, "二维码识别时间")
-            } catch (err) {
-                console.error(err);
-                alert("处理出错: " + err.message);
-            }
-        };
-        img.src = URL.createObjectURL(file);
+            console.log(res);
+            console.log(t2, "二维码识别时间");
+
+            // 可选：如果需要显示图片，可以创建 Image 对象显示
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = URL.createObjectURL(file);
+
+        } catch (err) {
+            console.error(err);
+            alert("处理出错: " + err.message);
+        }
+
+        // const img = new Image();
+        // img.onload = async function () {
+        //     canvas.width = img.width;
+        //     canvas.height = img.height;
+        //     ctx.drawImage(img, 0, 0);
+        //
+        //     // 获取图像像素数据（RGBA）
+        //     const imageData = ctx.getImageData(0, 0, img.width, img.height);
+        //     const pixelData = imageData.data;
+        //     const dataSize = pixelData.length;
+        //     console.log(pixelData)
+        //
+        //     console.log("需要分配的图片大小(mb)1", dataSize / (1024 * 1024))
+        //     try {
+        //         // 拷贝数据到 wasm 内存
+        //         let t1 = performance.now()
+        //         let res = module.process_Qrcode(pixelData, img.width, img.height);
+        //         let t2 = performance.now() - t1
+        //         console.log(res)
+        //         console.log(t2, "二维码识别时间")
+        //     } catch (err) {
+        //         console.error(err);
+        //         alert("处理出错: " + err.message);
+        //     }
+        // };
+        // img.src = URL.createObjectURL(file);
     });
 
 
