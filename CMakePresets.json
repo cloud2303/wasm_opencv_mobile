@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "base",
+      "displayName": "Base Configuration",
+      "description": "Common settings for all configurations.",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_C_COMPILER": "emcc",
+        "CMAKE_CXX_COMPILER": "em++",
+        "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "C:/Users/fujiahui/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      },
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "wasm"
+        }
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug Build",
+      "description": "Debug build with full debugging symbols.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/cmake-build-debug-wasm",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release Build",
+      "description": "Release build with optimizations.",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "TRUE",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3",
+        "CMAKE_EXE_LINKER_FLAGS_RELEASE": "-O3 -Wl,--strip-all "
+      },
+
+      "binaryDir": "${sourceDir}/cmake-build-release-wasm"
+    }
+  ]
+}
